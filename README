@@ -1,0 +1,129 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1108
+
+This plugin contains functions/commands that will cycle through one 
+buffer (the source) and compare the its contents against the contents of
+another buffer (the target).
+
+NOTE:  This is not a poor man's 'diff', since the source and target must be 
+              similar in appearance.  See example below for a better understanding.
+                                                                              
+Depending on the options specified and command chosen, it will open a split
+window (the result) and display either the entries that are:
+   - missing from the target buffer
+   or
+   - contained in both buffers
+   
+The plugin has created a menu, Plugin->WhatMissing.  There are two entries: 
+    WhatsMissing
+    WhatsNotMissing
+
+These menu items are also available in visual mode.  These menu items simply call the commands: 
+    :WhatsMissing
+    :WhatsNotMissing
+
+The behavior of whatsmissing.vim are governed by several options. Options can be specified using the WMSetOption command.  As mentioned above, the <Tab> button can be used for both option name and option value completion.
+                                                                            
+You can check the value of a specific option by: 
+    :WMGetOption option_name
+ 
+Here are the various options: 
+   mode  
+       - Values: "word" or "line".  
+       - WhatsMissing will move through the source buffer one |word| at a
+         time, and checks this value against the target buffer.  It will 
+         also automatically escape the following characters: 
+               '\\/.*$^~[]'
+         If the "line" mode is chosen the comparison between the source 
+         and target buffer is performed a line at a time. 
+                                                                            
+   ignore_case 
+       - Values: "0" or "1".  
+       - The "default" for WhatsMissing is to use the |'ignorecase'| option
+         of the target buffer.  Otherwise the user is allowed to override
+         it. 
+                                                                            
+   ignore_whitespace
+       - Values: "0" or "1".  
+       - If in "line" mode, you can choose to ignore leading and trailing
+         whitespace for the comparison. 
+
+
+Example
+------------
+Consider the case where you are maintaining a Vim syntax file.  It has entries like this:
+*************
+syn keyword sqlFunction	count sum avg min max debug_eng isnull
+syn keyword sqlFunction	greater lesser argn string ymd todate
+syn keyword sqlFunction sp_addalias
+syn keyword sqlFunction sp_addauditrecord
+syn keyword sqlKeyword	replicate rereceive resend reset
+syn keyword sqlKeyword	resolve resource respect
+syn keyword sqlKeyword	restrict result retain
+syn keyword sqlStatement allocate alter backup begin call case
+syn keyword sqlStatement checkpoint clear close commit configure connect
+syn keyword sqlStatement create deallocate declare delete describe
+syn keyword sqlType	char long varchar text
+syn keyword sqlType	bigint decimal double float int integer numeric 
+*************
+
+In order to create the syntax file in the first place you had to find the above words from somewhere.  In this case, I simply used grep against the source code to find various API method names, keywords, functions and so on.
+
+So in the end after running grep repeatedly and massaging the output, I end up with a file like this:
+**************
+abs
+absolute
+action
+activ
+expanded
+experience_estimate
+explanation
+explicit
+express
+exprtype
+remainder
+remote
+remove
+rename
+reorganize
+replicate 
+rereceive 
+resend 
+reset
+value
+values
+varbinary
+varchar
+varexists
+**************
+
+At this point you want to update your Vim syntax file to include all the new method names, keywords, functions and so on that are missing from the existing syntax file.
+
+You cannot run Diff against this, since the lines are completely different, you need to compare the words.
+
+After running :WhatsMissing, you end up with a split buffer showing:
+***************
+(19 of 24) items missing from: syntax.vim
+----------
+abs
+absolute
+action
+activ
+expanded
+experience_estimate
+explanation
+explicit
+express
+exprtype
+remainder
+remote
+remove
+rename
+reorganize
+value
+values
+varbinary
+varexists
+----------
+WMOptions:
+mode=word ignore_case=  ignore_whitespace=0
+***************
