@@ -100,7 +100,7 @@ At this point you want to update your Vim syntax file to include all the new met
 
 You cannot run Diff against this, since the lines are completely different, you need to compare the words.
 
-After running :WhatsMissing, you end up with a split buffer showing:
+After running :WhatsMissing, you end up with a split buffer showing (in this case), only the words missing.  This reduces the work required to determine which syntax elements to add to your file.
 ***************
 (19 of 24) items missing from: syntax.vim
 ----------
@@ -127,3 +127,6 @@ varexists
 WMOptions:
 mode=word ignore_case=  ignore_whitespace=0
 ***************
+
+Of course, the above example is for Vim syntax files, but it can be used for anything.
+

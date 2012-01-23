@@ -1,15 +1,15 @@
 " WhatMissing.vim - Shows what is missing between 2 buffers
 " ---------------------------------------------------------------
-" Version:  1.00
-" Authors:  David Fishburn <fishburn@ianywhere.com>
-" Last Modified: Sun Oct 17 2004 10:25:19 PM
+" Version:  3.0
+" Authors:  David Fishburn <dfishburn dot vim at gmail dot com>
+" Last Modified: 2012 Jan 22
 " Homepage: http://vim.sourceforge.net/script.php?script_id=1108
 " GetLatestVimScripts: 1108 1 :AutoInstall: WhatsMissing.vim
 
 if exists('g:loaded_whatsmissing') || &cp
     finish
 endif
-let g:loaded_whatsmissing = 100
+let g:loaded_whatsmissing = 20
 
 let s:wm_buffer_lines      = 10
 let s:wm_matching_cnt      = 0
@@ -360,28 +360,29 @@ function! s:WM_SetBufNbr( bufnr )
 endfunction
 
 function! s:WM_SetFileName( filename )
-    if !bufexists(bufnr(a:filename))
-        if filereadable(a:filename)
+    let filename = expand(a:filename)
+    if !bufexists(bufnr(filename))
+        if filereadable(filename)
             " load the file into a new buffer
-            exec 'view ' .  a:filename
-            if bufexists(bufnr(a:filename))
-                let s:wm_find_bufnr = bufnr(a:filename)
+            exec 'view ' .  filename
+            if bufexists(bufnr(filename))
+                let s:wm_find_bufnr = bufnr(filename)
             else
                 call s:WM_WarningMsg(
-                            \ "Failed to load: " . a:filename
+                            \ "Failed to load: " . filename
                             \ )
                 return -1
             endif
         else
             call s:WM_WarningMsg(
-                        \ "Cannot find: " . a:filename
+                        \ "Cannot find: " . filename
                         \ )
             return -1
         endif
     else
-        let s:wm_find_bufnr = bufnr(a:filename)
+        let s:wm_find_bufnr = bufnr(filename)
     endif
-    let s:wm_filename = a:filename
+    let s:wm_filename = filename
 
     return 1
 endfunction
@@ -480,7 +481,7 @@ function! s:WM_PromptOptions()
                 \ response
                 \ )
     let s:wm_ignore_case = (response ==# '1' ? '' : 
-                \ (response ==# '2' ? '\C' : '\c' ) )
+                \ (response ==# '2' ? '\c' : '\C' ) )
     
     " Ignore whitespace
     let response = (s:wm_ignore_whitespace == '' ? '1' : '2' )
