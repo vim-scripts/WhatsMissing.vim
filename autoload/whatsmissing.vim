@@ -1,15 +1,15 @@
 " WhatMissing.vim - Shows what is missing between 2 buffers
 " ---------------------------------------------------------------
-" Version:  4.0
+" Version:  5.0
 " Authors:  David Fishburn <dfishburn dot vim at gmail dot com>
-" Last Modified: 2012 Oct 10
+" Last Modified: 2012 Oct 17
 " Homepage: http://vim.sourceforge.net/script.php?script_id=1108
 " GetLatestVimScripts: 1108 1 :AutoInstall: WhatsMissing.vim
 
 if exists('g:loaded_whatsmissing_auto')
     finish
 endif
-let g:loaded_whatsmissing_auto = 40
+let g:loaded_whatsmissing_auto = 50
 
 " Turn on support for line continuations when creating the script
 let s:cpo_save = &cpo
@@ -356,6 +356,216 @@ function! whatsmissing#WhatsMissing(...) range
     " call s:WM_AddToResultBuffer( "EI:".&eventignore, "" )
 endfunction
 
+function! whatsmissing#WhatsNotMissingRemoveMatches()
+
+    if s:wm_find_mode != 'word'
+        call s:WM_WarningMsg(
+                    \ 'WM Remove Matches only works in "word" mode'
+                    \ )
+        return -1 
+    endif
+
+    if s:wm_org_bufnr == 0 || bufexists(s:wm_org_bufnr+0) < 1
+        call s:WM_WarningMsg(
+                    \ 'WM You must run WhatsNotMissing first.'
+                    \ )
+        return -1 
+    endif
+
+    if s:wm_missing_bufnr == 0 || bufexists(s:wm_missing_bufnr+0) < 1
+        call s:WM_WarningMsg(
+                    \ 'WM You must run WhatsNotMissing first.'
+                    \ )
+        return -1 
+    endif
+
+    " Do not use bufexists(s:wm_missing_buf_name), since it uses a fully
+    " qualified path name to search for the buffer, which in effect opens
+    " multiple buffers called "result" if the files that you are executing the
+    " commands from are in different directories.
+    let s:wm_missing_bufnr = bufnr(s:wm_missing_buf_name)
+
+    if s:wm_missing_bufnr == -1
+        call s:WM_WarningMsg(
+                    \ 'WM You must run WhatsNotMissing first.'
+                    \ )
+        return -1 
+    endif
+
+    if s:wm_matching_cnt == 0
+        call s:WM_WarningMsg(
+                    \ 'WM There are no matches - all done.'
+                    \ )
+        return -1 
+    endif
+
+    " Switch to the WhatsNotMissing buffer
+    silent! exec "buffer " . s:wm_missing_bufnr
+
+    " Make another quick chck to ensure we are in the correct buffer.
+    if line('$') < 6
+        " (4 of 486) items found in both buffers: keywords_not_missing_test.txt
+        " ----------
+        " ... matches ...
+        " ----------
+        " WMOptions:
+        " mode=word ignore_case=  ignore_whitespace=0
+
+        call s:WM_WarningMsg(
+                    \ 'WM Could not find appropriate WM buffer, looking at:'.s:wm_find_bufnr
+                    \ )
+        return -1 
+    endif
+
+
+    " Prevent the alternate buffer (<C-^>) from being set to this
+    " temporary file
+    let l:old_cpoptions = &cpoptions
+    setlocal cpo-=a
+    setlocal cpo-=A
+    let saveReg = @"
+    " save previous search string
+    let saveSearch = @/
+    let saveZ      = @z
+
+    " Disable all autocommands and events since we will be
+    " flipping between 3 buffers in rapid succession.
+    " If these events are not disabled, this can take
+    " a very long time
+    let l:old_eventignore = &eventignore
+    set eventignore+=BufNewFile,BufReadPre,BufRead,BufReadPost,BufReadCmd
+    set eventignore+=BufFilePre,BufFilePost,FileReadPre,FileReadPost
+    set eventignore+=FileReadCmd,FilterReadPre,FilterReadPost,FileType,Syntax
+    set eventignore+=StdinReadPre,StdinReadPost,BufWrite,BufWritePre
+    set eventignore+=BufWritePost,BufWriteCmd,FileWritePre,FileWritePost
+    set eventignore+=FileWriteCmd,FileAppendPre,FileAppendPost,FileAppendCmd
+    set eventignore+=FilterWritePre,FilterWritePost,FileChangedShell
+    set eventignore+=FileChangedRO,FocusGained,FocusLost,FuncUndefined
+    set eventignore+=CursorHold,BufEnter,BufLeave,BufWinEnter,BufWinLeave
+    set eventignore+=BufUnload,BufHidden,BufNew,BufAdd,BufCreate,BufDelete
+    set eventignore+=BufWipeout,WinEnter,WinLeave,CmdwinEnter,CmdwinLeave
+    set eventignore+=GUIEnter,VimEnter,VimLeavePre,VimLeave,EncodingChanged
+    set eventignore+=FileEncoding,RemoteReply,TermChanged,TermResponse,User
+    " New to WhatsMissing 4.0
+    set eventignore+=ColorScheme,CursorHoldI,CursorMoved,CursorMovedI
+    set eventignore+=FileChangedShellPost,GUIFailed,InsertChange,InsertCharPre
+    set eventignore+=InsertEnter,InsertLeave,MenuPopup,QuickFixCmdPre,QuickFixCmdPost
+    set eventignore+=SessionLoadPost,ShellCmdPost,ShellFilterPost,SourcePre
+    set eventignore+=SourceCmd,SpellFileMissing,SwapExists,TabEnter,TabLeave
+    set eventignore+=VimResized
+
+    let s:wm_checked_cnt = 0
+    let findstr          = ''
+    let org_curline      = line(".")
+    let org_curcol       = col(".")
+    let org_strlen       = strlen(s:wm_unescaped_findstr)
+
+    " Move to the second line of the WhatsNotMissing buffer.
+    " WM_GetNextFindStr does a "w" and will therefore move 
+    " to the first word of our matches.
+    call cursor(2,1)
+        
+    while (1==1)
+        " Get first matched word
+        let findstr   = s:WM_GetNextFindStr(a:firstline)
+        let del_count = strlen(findstr)
+
+        if s:wm_find_mode == 'word'
+            " Check to see if we are on a character
+            " Since a user can specify a range, abort when we have passed it
+            " When hitting w (at the end of the file) the cursor
+            " will simply move to the end of the word, so we must
+            " check to ensure we have moved off of the previous word.
+            "
+            " NOTE: There are 3 footer lines in the WhatsNotMissing buffer.
+            if (line(".") > (line('$')-3)) ||
+                        \ (line(".") == org_curline && 
+                        \   col(".") < (org_curcol+org_strlen) )
+                " We have reached the end of the file
+                break
+            endif
+        elseif s:wm_find_mode == 'line'
+            " In line mode, just check if we are on the last
+            " line of the file
+            if (line(".") > (line('$')-2)) ||
+                        \ (org_curline == (a:lastline+1))
+                " We have reached the end of the file
+                break
+            endif
+        endif
+        
+        
+        if strlen(findstr) > 0
+            " Switch to the buffer we want to check this string for
+            silent! exec "buffer " . s:wm_org_bufnr
+
+            " ignore case
+            let srch_str = s:wm_ignore_case
+            if s:wm_find_mode == 'word'
+                if findstr =~? '^\w'
+                    let srch_str = srch_str . '\<'
+                endif
+                let srch_str = srch_str . findstr
+                if findstr =~? '\w$'
+                    let srch_str = srch_str . '\>'
+                endif
+            else
+                let srch_str = srch_str . '^' . 
+                            \ s:wm_ignore_whitespace .
+                            \ findstr . 
+                            \ s:wm_ignore_whitespace .
+                            \ '$'
+            endif
+
+            " Decho strftime("%X").' '.srch_str
+
+            " Mark the current line to return to
+            let find_curline     = line(".")
+            let find_curcol      = col(".")
+
+            if s:wm_debug == 1
+                call s:WM_AddToResultBuffer( 'Finding: [' .
+                            \ srch_str . ']', "" )
+            endif
+            let found_line = search( srch_str, "w" )
+
+            if found_line > 0
+                " Remove this value from the original buffer 
+                " Simply delete the appropriate number of characters 
+                " from the buffer.
+                exec 'normal! '.del_count.'x'
+            endif
+
+            " Switch back to the WhatsNotMissing buffer
+            silent! exec "buffer " . s:wm_missing_bufnr
+
+        endif
+
+    endwhile
+
+    " Back to the original buffer
+    silent! exec "buffer " . s:wm_org_bufnr
+
+    silent! exe 'noh'
+
+    " Restore previous cpoptions
+    let &cpoptions   = l:old_cpoptions
+    let &eventignore = l:old_eventignore
+    let @" = saveReg
+    " restore previous search
+    let @/ = saveSearch
+    let @z = saveZ
+
+    let response = 0
+    let response = confirm("There maybe blank lines after the deletes, remove them?",
+                \ "&Yes\n&No",
+                \ response
+                \ )
+    if response == 1
+        :g/^\s*$/d_
+    endif
+endfunction
+
 function! s:WM_SetBufNbr( bufnr )
     if match(a:bufnr, '\d') == -1
         call s:WM_WarningMsg(
@@ -412,22 +622,22 @@ function! s:WM_SetFileName( filename )
 endfunction
 
 function! s:WM_AddToResultBuffer(output, do_clear)
-    " store current window number so we can return to it
+    " Store current window number so we can return to it
     let cur_winnr = winnr()
 
-    " do not use bufexists(s:wm_missing_buf_name), since it uses a fully
+    " Do not use bufexists(s:wm_missing_buf_name), since it uses a fully
     " qualified path name to search for the buffer, which in effect opens
     " multiple buffers called "result" if the files that you are executing the
     " commands from are in different directories.
     let s:wm_missing_bufnr = bufnr(s:wm_missing_buf_name)
 
     if s:wm_missing_bufnr == -1
-        " create the new buffer
+        " Create the new buffer
         silent exec 'belowright ' . s:wm_buffer_lines . 'new ' . s:wm_missing_buf_name
         let s:wm_missing_bufnr = bufnr("%")
     else
         if bufwinnr(s:wm_missing_bufnr) == -1
-            " if the buffer is not visible, wipe it out and recreate it,
+            " If the buffer is not visible, wipe it out and recreate it,
             " this will position us in the new buffer
             exec 'bwipeout! ' . s:wm_missing_bufnr
             silent exec 'bot ' . s:wm_buffer_lines . 'new ' . s:wm_missing_buf_name

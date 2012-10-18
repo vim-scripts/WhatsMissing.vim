@@ -1,4 +1,4 @@
-*whatsmissing.txt*	For Vim version 6.0.  
+*whatsmissing.txt*	For Vim version 7.0.  
 
 
                 	  VIM REFERENCE MANUAL 
@@ -6,7 +6,7 @@
                      David Fishburn <dfishburn dot vim at gmail dot com>
 
 	  	Whatsmissing plugin (WhatsMissing.vim) Manual
-	  	    WhatsMissing.vim version 4.0
+	  	    WhatsMissing.vim version 5.0
 
 For instructions on installing this file, type
 	:help add-local-help
@@ -21,25 +21,30 @@ Homepage: http://vim.sourceforge.net/script.php?script_id=1108
 3.  Commands    				|whatsmissing-commands|
 4.  Functions     				|whatsmissing-functions|
 5.  Options     				|whatsmissing-options|
+5.  Menu             				|whatsmissing-menu|
 
 {Vi does not have any of this}
 
 ------------------------------------------------------------------------------
 What's New					*whatsmissing-new*
 
-Version 4.00
-    - Added a number of new or missing Vim Events
-    - Converted to an autoload plugin
+Version 5.0
+    - Added filename completion to WhatsMissing and WhatsNotMissing
+    - Added new command WhatsNotMissingRemoveMatches
+
+Version 4.0
+    - Added a number of new or missing Vim Events (to be ignored)
+    - Converted to an autoload plugin (for faster Vim loading)
     - Correctly handled the cpo for 'a' and 'A'
     - Added a few more examples are more explicity defined which 
       is the source and target files from the WhatsMissing
       command line
 
-Version 3.00
+Version 3.0
     - There was a logic error when prompting the user for the options.  
       Ignore case value was reversed.
 
-Version 1.00
+Version 1.0
     - Initial Release
  
 ------------------------------------------------------------------------------
@@ -62,14 +67,16 @@ Version 1.00
     or
     - contained in both buffers
     
- The plugin has created a menu, Plugin->WhatMissing.  There are two entries: >
-     WhatsMissing
-     WhatsNotMissing
+ The plugin has created a menu, Plugin->WhatMissing.  There are these entries: >
+     Whats Missing
+     Whats Not Missing
+     Remove Matches
 <
  These menu items are also available in visual mode.  These menu items simply
  call the commands: >
      :WhatsMissing
      :WhatsNotMissing
+     :WhatsNotMissingRemoveMatches
 <
  The commands will prompt the user for various options, see below in
  the |whatsmissing-commands| section.
@@ -78,7 +85,8 @@ Version 1.00
 ------------------------------------------------------------------------------
 2. Installation         			*whatsmissing-install*
 
- You can use this script as a plugin by copying it to your plugin directory. 
+ The zip file contains the appropriate directory structure to unzip 
+ into your $VIM/vimfiles or $VIM/.vim directory.
  See |add-global-plugin| for instructions.
  
  You can also |:source| it from your |.vimrc|.
@@ -107,7 +115,16 @@ Version 1.00
  WhatsNotMissing
 <    Moves through the source buffer and checks to see if the entry exists 
      in the target buffer.  If it *does *, then it is considered *not* missing
-     and the entry is added to the third buffer.
+     and the entry is added to the third buffer. >
+
+
+ WhatsNotMissingRemoveMatches 
+<    Assuming you have just run WhatsNotMissing, you are viewing a list of 
+     items which exist in the source file and the target.  You may want to
+     remove these known items from the source file before running the 
+     WhatsMissing command.  WhatsNotMissingRemoveMatches will loop through 
+     all matches and remove the "words" from the source file.  This command 
+     currently has only been tested using the "word" mode.
 
 >
  WMSetOption
@@ -153,7 +170,8 @@ Version 1.00
 <         Can be any of the following:
             - buffer #
             - buffer name
-            - absolute / relative filename >
+            - absolute / relative filename 
+            - NOTE: You can complete the filename using the TAB key >
         - 2nd parameter - Missing or NOT
 <         Can be: 
             - 1 = Check for items missing from the target buffer
@@ -170,7 +188,34 @@ Version 1.00
 
  WhatsNotMissing
 <    Takes the same parameters as WhatsMissing, but sets the 2nd 
-     parameter to 0.
+     parameter to 0. >
+       
+
+ WhatsNotMissingRemoveMatches
+<    When I create my syntax files, I run a process against source files
+     to generate a list of syntax items.  I then compare this file to my 
+     mysyntax.vim file using the WhatsMissing command.  Any items missing 
+     I added to the mysyntax.vim file.
+
+     There can be times though, that I generate my syntax list file, but 
+     since this can be an less than exact science, I already have another 
+     file with a list of words that I have already analyzed and determined 
+     they are not valid syntax items.  So when the target software releases 
+     a new version, I have to go through this process a second time.  So, 
+     the steps become:
+         1.  I generate a list of syntax items.
+         2.  Using WhatsNotMissing, I check this new list against another 
+             list of items I already know should not be included in the 
+             mysyntax.vim file.
+         3.  WhatsNotMissingRemoveMatches will loop through the matches 
+             and remove them from step 1.
+         4.  Now I run WhatsMissing from the file in step 1 against 
+             the mysyntax.vim file.
+         5.  Now the list of words which are missing, I go through each one 
+             and either add them word to mysyntax.vim or I add it to 
+             file (from step 2) which is a list of exclusions.
+         6.  The list of exclusions is now ready for the next time the software 
+             release happens, I do not have to redo that work.
 
 >
  WM_SetOption
@@ -224,6 +269,28 @@ Version 1.00
 <       - Values: "0" or "1".  
         - Used internally to show search strings.
 
+
+------------------------------------------------------------------------------
+6. Menu 					*whatsmissing-menu*
+
+ WhatsMissing can optionally create a Vim menu.  This can be controlled
+ via a setting in your |.vimrc|. >
+
+    wm_default_menu_mode
+<       - Menus are useful for a number of reasons:
+              See a list of available commands.
+              Have a floating menu when using the plugin a lot.
+              Quick reference guide.
+          There are four settings that will control the placement
+          of the menu: 
+              "0": Turns the menu off.
+              "1": Turns the 'WhatsMissing' menu on with no menu shortcut.
+              "2": Turns the 'WhatsMissing 'menu on with <alt>-w as the shortcut.
+              "3": Turns the 'Plugin -> WhatsMissing' menu on with <alt>-w as 
+                   the shortcut.
+          This option defaults to a value of 3 and can be changed
+          by adding the following to your vimrc: >
+            :let  g:wm_default_menu_mode = 3
 
 ------------------------------------------------------------------------------
   vim:tw=78:fo=tcq2:ts=8:ft=help:norl:
